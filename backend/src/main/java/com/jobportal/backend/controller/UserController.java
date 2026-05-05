@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import com.jobportal.backend.payload.response.MessageResponse;
 
 import java.util.List;
 
@@ -78,5 +79,17 @@ public class UserController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + user.getResumeFileName() + "\"")
                 .contentType(MediaType.parseMediaType(user.getResumeContentType()))
                 .body(user.getResumeData());
+    }
+    @PostMapping("/upgrade")
+    @PreAuthorize("hasRole('JOB_SEEKER')")
+    public ResponseEntity<MessageResponse> upgradeToPremium() {
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Error: User is not found."));
+
+        user.setPremium(true);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new MessageResponse("Successfully upgraded to premium."));
     }
 }

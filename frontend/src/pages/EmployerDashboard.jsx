@@ -1,7 +1,9 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
-import { PlusCircle, Building, Users, Briefcase, MapPin, DollarSign, X, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, Building, Users, Briefcase, MapPin, DollarSign, X, FileText, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
+import toast from 'react-hot-toast';
+import ChatModal from '../components/ChatModal';
 
 export default function EmployerDashboard() {
   const { user } = useContext(AuthContext);
@@ -9,11 +11,40 @@ export default function EmployerDashboard() {
   const [applications, setApplications] = useState([]);
   const [showPostJob, setShowPostJob] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
-  const [newJob, setNewJob] = useState({ title: '', company: '', description: '', location: '', salary: '' });
+  const [showChat, setShowChat] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const [newJob, setNewJob] = useState({ title: '', company: '', description: '', location: '', salary: '', experienceLevel: 'Mid Level', jobType: 'Onsite', skills: '' });
 
   useEffect(() => {
     fetchData();
   },[]);
+
+  useEffect(() => {
+    let url = null;
+    if (selectedApp) {
+      setResumeLoading(true);
+      api.get(`/applications/${selectedApp.id}/resume`, { responseType: 'blob' })
+        .then(res => {
+          url = URL.createObjectURL(res.data);
+          setResumeUrl(url);
+          setResumeLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch resume", err);
+          setResumeUrl(null);
+          setResumeLoading(false);
+        });
+    } else {
+      setResumeUrl(null);
+    }
+
+    return () => {
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [selectedApp]);
 
   const fetchData = async () => {
     try {
@@ -21,7 +52,7 @@ export default function EmployerDashboard() {
         api.get('/jobs/employer'),
         api.get('/applications/employer')
       ]);
-      setJobs(jobsRes.data);
+      setJobs(jobsRes.data.content ? jobsRes.data.content : jobsRes.data);
       setApplications(appsRes.data);
     } catch (err) {
       console.error(err);
@@ -33,10 +64,11 @@ export default function EmployerDashboard() {
     try {
       await api.post('/jobs', { ...newJob, salary: parseFloat(newJob.salary) });
       setShowPostJob(false);
-      setNewJob({ title: '', company: '', description: '', location: '', salary: '' });
+      setNewJob({ title: '', company: '', description: '', location: '', salary: '', experienceLevel: 'Mid Level', jobType: 'Onsite', skills: '' });
       fetchData();
+      toast.success('Job posted successfully!');
     } catch (err) {
-      alert('Error posting job');
+      toast.error(err.response?.data?.message || 'Error posting job');
     }
   };
 
@@ -45,8 +77,9 @@ export default function EmployerDashboard() {
       await api.put(`/applications/${appId}/status?status=${status}`);
       setSelectedApp(prev => ({ ...prev, status }));
       fetchData(); // Refresh the list
+      toast.success(`Applicant status updated to ${status}!`);
     } catch (err) {
-      alert('Failed to update status');
+      toast.error(err.response?.data?.message || 'Failed to update status');
     }
   };
 
@@ -93,6 +126,26 @@ export default function EmployerDashboard() {
             <div className="md:col-span-2 space-y-2">
               <label className="text-sm font-bold text-slate-700 ml-1">Salary (USD)</label>
               <input type="number" required placeholder="120000" className="w-full bg-slate-50 border-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 p-4 rounded-xl transition-all" value={newJob.salary} onChange={e => setNewJob({...newJob, salary: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 ml-1">Experience Level</label>
+              <select className="w-full bg-slate-50 border-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 p-4 rounded-xl transition-all" value={newJob.experienceLevel} onChange={e => setNewJob({...newJob, experienceLevel: e.target.value})}>
+                <option value="Entry Level">Entry Level</option>
+                <option value="Mid Level">Mid Level</option>
+                <option value="Senior Level">Senior Level</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 ml-1">Job Type</label>
+              <select className="w-full bg-slate-50 border-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 p-4 rounded-xl transition-all" value={newJob.jobType} onChange={e => setNewJob({...newJob, jobType: e.target.value})}>
+                <option value="Onsite">Onsite</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Remote">Remote</option>
+              </select>
+            </div>
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-bold text-slate-700 ml-1">Required Skills</label>
+              <input type="text" placeholder="e.g. React, Java, SQL" className="w-full bg-slate-50 border-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 p-4 rounded-xl transition-all" value={newJob.skills} onChange={e => setNewJob({...newJob, skills: e.target.value})} />
             </div>
             <div className="md:col-span-2 space-y-2">
               <label className="text-sm font-bold text-slate-700 ml-1">Job Description</label>
@@ -200,17 +253,29 @@ export default function EmployerDashboard() {
               <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                 <div className="bg-slate-50 py-3 px-6 border-b border-slate-200 flex justify-between items-center text-sm font-bold text-slate-600">
                   <span className="flex items-center gap-2"><FileText size={18}/> {selectedApp.fileName}</span>
-                  <a href={`http://localhost:8080/api/applications/${selectedApp.id}/resume`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 hover:underline">
-                    Open in New Tab
-                  </a>
+                  {resumeUrl && (
+                    <a href={resumeUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 hover:underline">
+                      Open in New Tab
+                    </a>
+                  )}
                 </div>
                 <div className="flex-1 bg-slate-200/50 relative min-h-[50vh]">
                   {/* We use iframe or object to embed standard PDFs inline */}
-                  <iframe 
-                    title="Resume Viewer"
-                    src={`http://localhost:8080/api/applications/${selectedApp.id}/resume`} 
-                    className="absolute inset-0 w-full h-full border-none bg-white"
-                  ></iframe>
+                  {resumeLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-medium bg-white">
+                      Loading resume...
+                    </div>
+                  ) : resumeUrl ? (
+                    <iframe 
+                      title="Resume Viewer"
+                      src={resumeUrl} 
+                      className="absolute inset-0 w-full h-full border-none bg-white"
+                    ></iframe>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-medium bg-white">
+                      Failed to load resume.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -224,6 +289,14 @@ export default function EmployerDashboard() {
                   Current Status: {selectedApp.status}
               </div>
               <div className="flex gap-4">
+                {(selectedApp.status === 'ACCEPTED' || selectedApp.status === 'INTERVIEWING') && (
+                  <button 
+                    onClick={() => setShowChat(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors shadow-sm"
+                  >
+                    <MessageSquare size={18}/> Open Chat
+                  </button>
+                )}
                 <button 
                   onClick={() => updateAppStatus(selectedApp.id, 'REJECTED')}
                   disabled={selectedApp.status === 'REJECTED'}
@@ -242,6 +315,10 @@ export default function EmployerDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {showChat && selectedApp && (
+        <ChatModal application={selectedApp} onClose={() => setShowChat(false)} />
       )}
     </div>
   );

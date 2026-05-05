@@ -1,8 +1,9 @@
 import { useState, useContext } from 'react';
 import AuthService from '../services/auth.service';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, ArrowRightCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -10,15 +11,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await login(formData.email, formData.password);
-      navigate('/dashboard');
+      toast.success('Successfully logged in!');
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials');
+      const msg = err.response?.data?.message || 'Invalid credentials';
+      setError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };

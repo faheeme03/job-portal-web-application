@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { MapPin, DollarSign, Building2, ArrowLeft, Upload, Briefcase, FileText, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function JobDetails() {
   const { id } = useParams();
@@ -43,13 +44,17 @@ export default function JobDetails() {
           'Content-Type': 'multipart/form-data'
         }
       });
-      setMessage(res.data.message || 'Application submitted successfully!');
+      const successMsg = res.data.message || 'Application submitted successfully!';
+      setMessage(successMsg);
+      toast.success(successMsg);
       setResume(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = null;
       }
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Error applying for job.');
+      const errMsg = err.response?.data?.message || 'Error applying for job.';
+      setMessage(errMsg);
+      toast.error(errMsg);
     } finally {
       setApplying(false);
     }

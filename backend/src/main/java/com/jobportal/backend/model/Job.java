@@ -20,6 +20,10 @@ public class Job {
     private String location;
     private BigDecimal salary;
 
+    private String experienceLevel;
+    private String jobType;
+    private String skills;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employer_id")
     private User employer;
@@ -50,6 +54,15 @@ public class Job {
 
     public BigDecimal getSalary() { return salary; }
     public void setSalary(BigDecimal salary) { this.salary = salary; }
+
+    public String getExperienceLevel() { return experienceLevel; }
+    public void setExperienceLevel(String experienceLevel) { this.experienceLevel = experienceLevel; }
+
+    public String getJobType() { return jobType; }
+    public void setJobType(String jobType) { this.jobType = jobType; }
+
+    public String getSkills() { return skills; }
+    public void setSkills(String skills) { this.skills = skills; }
 
     public User getEmployer() { return employer; }
     public void setEmployer(User employer) { this.employer = employer; }

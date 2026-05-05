@@ -1,18 +1,37 @@
 import { useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Search, Building2, Users, MapPin, DollarSign, Briefcase, Zap, Star } from 'lucide-react';
+import { ArrowRight, Search, Building2, Users, MapPin, DollarSign, Briefcase, Zap, Star, Bookmark, Sparkles } from 'lucide-react';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
-
+import SkeletonJobCard from '../components/SkeletonJobCard';
+import { useBookmarks } from '../hooks/useBookmarks';
+import toast from 'react-hot-toast';
 export default function Home() {
   const [jobs, setJobs] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
+  const [loading, setLoading] = useState(true);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (searchKeyword) params.append('keyword', searchKeyword);
+    if (searchLocation) params.append('location', searchLocation);
+    navigate(`/jobs?${params.toString()}`);
+  };
 
   useEffect(() => {
     api.get('/jobs').then(res => {
-      setJobs(res.data.slice(0, 3)); 
-    }).catch(console.error);
+      const fetchedJobs = res.data.content ? res.data.content : res.data;
+      setJobs(fetchedJobs.slice(0, 3)); 
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, []);
 
   const handleApply = (id) => {
@@ -45,10 +64,48 @@ export default function Home() {
         <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10 font-medium">
           Connect with top employers and discover thousands of opportunities that perfectly match your unique skills and aspirations.
         </p>
-        <div className="flex justify-center flex-col sm:flex-row gap-4">
+
+        {/* Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="max-w-3xl mx-auto bg-white p-3 rounded-full shadow-lg border border-slate-100 mb-10 flex flex-col sm:flex-row gap-2 relative z-20">
+          <div className="flex-1 flex items-center px-4 bg-slate-50 rounded-full">
+            <Search className="text-slate-400 mr-2 min-w-[20px]" size={20} />
+            <input 
+              type="text" 
+              placeholder="Job title or keyword" 
+              className="w-full bg-transparent border-none focus:ring-0 text-slate-700 placeholder-slate-400 py-3 outline-none"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+            />
+          </div>
+          <div className="flex-1 flex items-center px-4 bg-slate-50 rounded-full">
+            <MapPin className="text-slate-400 mr-2 min-w-[20px]" size={20} />
+            <input 
+              type="text" 
+              placeholder="City, state, or 'Remote'" 
+              className="w-full bg-transparent border-none focus:ring-0 text-slate-700 placeholder-slate-400 py-3 outline-none"
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
+            />
+          </div>
+          <button 
+            type="submit"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-full font-bold transition-colors shadow-md sm:w-auto w-full flex-shrink-0"
+          >
+            Search
+          </button>
+        </form>
+
+        <div className="flex justify-center flex-col sm:flex-row gap-4 flex-wrap mt-8">
           <Link to="/jobs" className="bg-slate-900 text-white px-10 py-5 rounded-full font-extrabold text-lg hover:bg-indigo-600 shadow-xl shadow-slate-300 hover:shadow-indigo-300 transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group">
             Explore Open Jobs <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </Link>
+          
+          {(!user || user.role === 'ROLE_JOB_SEEKER') && (
+            <Link to="/resume-builder" target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white px-10 py-5 rounded-full font-extrabold text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-300 transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group">
+              <Sparkles size={20} className="text-amber-300 animate-pulse" /> Create AI Resume in Seconds <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          )}
+
           {!user && (
             <Link to="/register" className="bg-white text-slate-700 border-2 border-slate-200 px-10 py-5 rounded-full font-extrabold text-lg hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 transition-all flex items-center justify-center gap-2">
               Create an Account
@@ -97,29 +154,47 @@ export default function Home() {
         </div>
         
         <div className="grid md:grid-cols-3 gap-8">
-          {jobs.map(job => (
-            <div key={job.id} className="bg-white/80 backdrop-blur-lg p-8 border border-white/50 rounded-[2rem] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-2xl hover:shadow-indigo-100 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-6 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                  <Briefcase size={28} strokeWidth={1.5}/>
+          {loading ? (
+            [1, 2, 3].map(i => <SkeletonJobCard key={i} />)
+          ) : (
+            jobs.map(job => {
+              const saved = isBookmarked(job.id);
+              return (
+              <div key={job.id} className="bg-white/80 backdrop-blur-lg p-5 sm:p-8 border border-white/50 rounded-[2rem] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-2xl flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:shadow-indigo-100 hover:-translate-y-2">
+                <button 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    toggleBookmark(job.id); 
+                    toast.success(saved ? "Removed from saved" : "Job saved successfully"); 
+                  }}
+                  className={`absolute top-6 right-6 p-2 rounded-full transition-colors z-20 ${saved ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-slate-400 hover:bg-slate-50 hover:text-indigo-500'}`}
+                  title={saved ? "Remove bookmark" : "Save job"}
+                >
+                  <Bookmark size={20} fill={saved ? "currentColor" : "none"} />
+                </button>
+                    
+                <div className="flex-1">
+                  <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-6 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                    <Briefcase size={28} strokeWidth={1.5}/>
+                  </div>
+                  <h3 className="text-2xl font-extrabold text-slate-800 mb-3 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors pr-10">{job.title}</h3>
+                  
+                  <div className="flex flex-col gap-3 mt-6 mb-8 text-sm font-semibold text-slate-500">
+                    <span className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-xl"><Building2 size={18} className="text-slate-400"/> {job.company}</span>
+                    <span className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-xl"><MapPin size={18} className="text-slate-400"/> {job.location}</span>
+                    <span className="flex items-center gap-3 bg-emerald-50 text-emerald-700 px-4 py-2.5 rounded-xl border border-emerald-100/50"><DollarSign size={18} className="text-emerald-500"/> ${job.salary.toLocaleString()}</span>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-extrabold text-slate-800 mb-3 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors">{job.title}</h3>
-                
-                <div className="flex flex-col gap-3 mt-6 mb-8 text-sm font-semibold text-slate-500">
-                  <span className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-xl"><Building2 size={18} className="text-slate-400"/> {job.company}</span>
-                  <span className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-xl"><MapPin size={18} className="text-slate-400"/> {job.location}</span>
-                  <span className="flex items-center gap-3 bg-emerald-50 text-emerald-700 px-4 py-2.5 rounded-xl border border-emerald-100/50"><DollarSign size={18} className="text-emerald-500"/> ${job.salary.toLocaleString()}</span>
-                </div>
+                <button 
+                  onClick={() => handleApply(job.id)}
+                  className="w-full bg-slate-900 text-white group-hover:bg-indigo-600 py-4 px-6 rounded-xl font-extrabold transition-colors duration-300 shadow-md flex items-center justify-center gap-2 mt-auto"
+                >
+                  Apply Now <ArrowRight size={18} />
+                </button>
               </div>
-              <button 
-                onClick={() => handleApply(job.id)}
-                className="w-full bg-slate-900 text-white group-hover:bg-indigo-600 py-4 px-6 rounded-xl font-extrabold transition-colors duration-300 shadow-md flex items-center justify-center gap-2"
-              >
-                Apply Now <ArrowRight size={18} />
-              </button>
-            </div>
-          ))}
-          {jobs.length === 0 && (
+            )})
+          )}
+          {!loading && jobs.length === 0 && (
             <div className="col-span-3 bg-white/60 backdrop-blur-xl border border-white/50 p-16 rounded-[2.5rem] text-center shadow-sm">
               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
                 <Briefcase size={32}/>

@@ -10,7 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -24,8 +28,26 @@ public class JobController {
     UserRepository userRepository;
 
     @GetMapping
-    public List<Job> getAllJobs() {
-        return jobRepository.findAll();
+    public Page<Job> getAllJobs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.findAll(pageable);
+    }
+
+    @GetMapping("/search")
+    public Page<Job> searchJobs(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) BigDecimal minSalary,
+            @RequestParam(required = false) BigDecimal maxSalary,
+            @RequestParam(required = false) String experienceLevel,
+            @RequestParam(required = false) String jobType,
+            @RequestParam(required = false) String skill,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.searchJobs(keyword, location, minSalary, maxSalary, experienceLevel, jobType, skill, pageable);
     }
 
     @GetMapping("/{id}")
@@ -49,15 +71,21 @@ public class JobController {
     
     @GetMapping("/employer")
     @PreAuthorize("hasRole('EMPLOYER')")
-    public List<Job> getJobsByEmployer() {
+    public Page<Job> getJobsByEmployer(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         User employer = userRepository.findById(userDetails.getId()).orElse(null);
-        return jobRepository.findByEmployer(employer);
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.findByEmployer(employer, pageable);
     }
 
     @GetMapping("/all-jobs")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<Job> getAdminAllJobs() {
-        return jobRepository.findAll();
+    public Page<Job> getAdminAllJobs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.findAll(pageable);
     }
 }

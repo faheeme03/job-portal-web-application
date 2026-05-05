@@ -32,6 +32,10 @@ export default function Navbar() {
               <Link to="/jobs" className="hover:text-indigo-600 transition-colors hidden sm:block">Explore Jobs</Link>
             )}
             
+            {location.pathname === '/' && (!user || user.role === 'ROLE_JOB_SEEKER') && (
+              <Link to="/resume-builder" target="_blank" rel="noopener noreferrer" className="hover:text-amber-600 transition-colors hidden sm:block">Resume Builder</Link>
+            )}
+
             {user ? (
               <div className="flex items-center gap-5 ml-2">
                 <Link to="/dashboard" className="flex items-center gap-2 hover:text-indigo-600 transition-colors">

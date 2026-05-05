@@ -38,6 +38,8 @@ public class User {
     private String resumeFileName;
     private String resumeContentType;
 
+    private boolean isPremium = false;
+
     public User() {}
 
     public User(String name, String email, String password, Role role) {
@@ -76,4 +78,7 @@ public class User {
 
     public String getResumeContentType() { return resumeContentType; }
     public void setResumeContentType(String resumeContentType) { this.resumeContentType = resumeContentType; }
+
+    public boolean isPremium() { return isPremium; }
+    public void setPremium(boolean premium) { isPremium = premium; }
 }

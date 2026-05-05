@@ -2,7 +2,8 @@ import { useEffect, useState, useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
-import { Briefcase, Calendar, CheckCircle, Clock, MapPin, Building2, ChevronRight, FileSearch, UserCircle, Edit3, Award, FileText, Upload } from 'lucide-react';
+import { Briefcase, Calendar, CheckCircle, Clock, MapPin, Building2, ChevronRight, FileSearch, UserCircle, Edit3, Award, FileText, Upload, MessageSquare } from 'lucide-react';
+import ChatModal from '../components/ChatModal';
 
 export default function JobSeekerDashboard() {
   const { user } = useContext(AuthContext);
@@ -10,6 +11,8 @@ export default function JobSeekerDashboard() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('applications');
+  const [activeChatApp, setActiveChatApp] = useState(null);
+  const [expandedAppId, setExpandedAppId] = useState(null);
   
   // Profile Form State
   const [bio, setBio] = useState('');
@@ -39,6 +42,19 @@ export default function JobSeekerDashboard() {
     };
     fetchDashboardData();
   }, []);
+
+  const calculateProfileStrength = () => {
+    if (!user) return 0;
+    let score = 0;
+    if (user.name) score += 10;
+    if (user.email) score += 10;
+    if (profile?.bio) score += 20;
+    if (profile?.certificates) score += 20;
+    if (profile?.resumeData) score += 40;
+    return score;
+  };
+
+  const profileStrength = calculateProfileStrength();
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -91,6 +107,24 @@ export default function JobSeekerDashboard() {
           <p className="text-slate-300 text-lg flex items-center gap-2 justify-center md:justify-start">
             {user.email} {profile?.resumeData && <span className="bg-emerald-500/20 text-emerald-300 text-xs px-2 py-0.5 rounded-full border border-emerald-500/30">Resume Uploaded</span>}
           </p>
+
+          <div className="mt-6 max-w-sm mx-auto md:mx-0">
+            <div className="flex justify-between text-xs font-bold mb-2">
+              <span className="text-slate-200">Profile Strength</span>
+              <span className={profileStrength === 100 ? 'text-emerald-400' : 'text-indigo-300'}>{profileStrength}%</span>
+            </div>
+            <div className="w-full bg-slate-800/50 rounded-full h-2 overflow-hidden backdrop-blur-sm border border-white/10">
+              <div 
+                className={`h-full rounded-full transition-all duration-1000 ease-out ${profileStrength === 100 ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-gradient-to-r from-indigo-500 to-purple-400 shadow-[0_0_10px_rgba(129,140,248,0.5)]'}`} 
+                style={{ width: `${profileStrength}%` }}
+              ></div>
+            </div>
+            {profileStrength < 100 && (
+              <p className="text-xs text-indigo-200 mt-2 font-medium flex items-center gap-1.5 justify-center md:justify-start">
+                <ChevronRight size={14} className="text-indigo-400"/> Complete your profile to stand out!
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -130,33 +164,102 @@ export default function JobSeekerDashboard() {
         ) : (
           <div className="grid gap-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
             {applications.map(app => (
-              <div key={app.id} className="bg-white/80 backdrop-blur-lg p-6 border border-white/40 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all cursor-pointer group">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-colors">
-                    <Briefcase size={28} strokeWidth={1.5} />
+              <div key={app.id} 
+                   onClick={() => setExpandedAppId(expandedAppId === app.id ? null : app.id)}
+                   className="bg-white/80 backdrop-blur-lg p-6 border border-white/40 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-6 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all cursor-pointer group"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-colors">
+                      <Briefcase size={28} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{app.job.title}</h3>
+                      <div className="flex flex-wrap gap-y-2 gap-x-4 text-sm font-medium text-slate-500 mb-3">
+                        <span className="flex items-center gap-1.5"><Building2 size={16}/> {app.job.company}</span>
+                        <span className="flex items-center gap-1.5"><MapPin size={16}/> {app.job.location}</span>
+                      </div>
+                      <div className="text-xs font-semibold text-slate-400 bg-slate-100 inline-flex items-center gap-1.5 px-3 py-1 rounded-full">
+                        <Calendar size={12}/> Applied {new Date(app.appliedAt).toLocaleDateString()}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{app.job.title}</h3>
-                    <div className="flex flex-wrap gap-y-2 gap-x-4 text-sm font-medium text-slate-500 mb-3">
-                      <span className="flex items-center gap-1.5"><Building2 size={16}/> {app.job.company}</span>
-                      <span className="flex items-center gap-1.5"><MapPin size={16}/> {app.job.location}</span>
-                    </div>
-                    <div className="text-xs font-semibold text-slate-400 bg-slate-100 inline-flex items-center gap-1.5 px-3 py-1 rounded-full">
-                      <Calendar size={12}/> Applied {new Date(app.appliedAt).toLocaleDateString()}
-                    </div>
+                  
+                  <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
+                    <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold shadow-sm
+                      ${app.status === 'PENDING' ? 'bg-amber-100/50 text-amber-700 border border-amber-200/50' : 
+                        (app.status === 'ACCEPTED' || app.status === 'INTERVIEWING') ? 'bg-emerald-100/50 text-emerald-700 border border-emerald-200/50' : 
+                        'bg-rose-100/50 text-rose-700 border border-rose-200/50'}`}>
+                      {app.status === 'PENDING' ? <Clock size={16}/> : <CheckCircle size={16}/>}
+                      {app.status}
+                    </span>
+                    
+                    {(app.status === 'ACCEPTED' || app.status === 'INTERVIEWING') && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setActiveChatApp(app); }}
+                        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-bold shadow-sm transition-colors"
+                      >
+                        <MessageSquare size={16}/> Chat
+                      </button>
+                    )}
+                    <ChevronRight className={`text-slate-300 group-hover:text-indigo-600 transition-transform duration-300 ml-3 ${expandedAppId === app.id ? 'rotate-90 text-indigo-600' : ''}`} />
                   </div>
                 </div>
-                
-                <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
-                  <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold shadow-sm
-                    ${app.status === 'PENDING' ? 'bg-amber-100/50 text-amber-700 border border-amber-200/50' : 
-                      app.status === 'ACCEPTED' ? 'bg-emerald-100/50 text-emerald-700 border border-emerald-200/50' : 
-                      'bg-rose-100/50 text-rose-700 border border-rose-200/50'}`}>
-                    {app.status === 'PENDING' ? <Clock size={16}/> : <CheckCircle size={16}/>}
-                    {app.status}
-                  </span>
-                  <ChevronRight className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                </div>
+
+                {/* Expanded Timeline View */}
+                {expandedAppId === app.id && (
+                  <div className="pt-6 mt-2 border-t border-slate-100 animate-in fade-in slide-in-from-top-4 duration-300 cursor-default" onClick={e => e.stopPropagation()}>
+                    <h4 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
+                       Application Progress Timeline
+                    </h4>
+                    
+                    <div className="relative border-l-2 border-indigo-100 ml-3 space-y-8 pb-4">
+                      
+                      {/* Step 1: Application Submitted */}
+                      <div className="relative pl-8">
+                        <div className="absolute -left-[11px] top-0.5 bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center border-4 border-white"><CheckCircle size={10} strokeWidth={4}/></div>
+                        <h5 className="font-bold text-slate-800 text-sm">Application Submitted</h5>
+                        <p className="text-slate-500 text-xs mt-1">You successfully applied on {new Date(app.appliedAt).toLocaleDateString()}</p>
+                      </div>
+
+                      {/* Step 2: Under Review */}
+                      <div className="relative pl-8">
+                        <div className={`absolute -left-[11px] top-0.5 w-5 h-5 rounded-full flex items-center justify-center border-4 border-white ${(app.status === 'PENDING' || app.status === 'INTERVIEWING' || app.status === 'ACCEPTED' || app.status === 'REJECTED') ? 'bg-indigo-600 text-white' : 'bg-slate-200'}`}>{(app.status !== 'PENDING') ? <CheckCircle size={10} strokeWidth={4}/> : <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}</div>
+                        <h5 className={`font-bold text-sm ${(app.status === 'PENDING' || app.status === 'INTERVIEWING' || app.status === 'ACCEPTED' || app.status === 'REJECTED') ? 'text-slate-800' : 'text-slate-400'}`}>In Review</h5>
+                        <p className="text-slate-500 text-xs mt-1">The employer is currently reviewing your resume and profile.</p>
+                      </div>
+
+                      {/* Step 3: Interviewing (Only show if actually Interviewing or Accepted) */}
+                      {(app.status === 'INTERVIEWING' || app.status === 'ACCEPTED') && (
+                        <div className="relative pl-8 animate-in fade-in slide-in-from-top-2">
+                          <div className={`absolute -left-[11px] top-0.5 w-5 h-5 rounded-full flex items-center justify-center border-4 border-white bg-indigo-600 text-white`}>{app.status === 'ACCEPTED' ? <CheckCircle size={10} strokeWidth={4}/> : <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}</div>
+                          <h5 className="font-bold text-slate-800 text-sm">Interview Phase</h5>
+                          <p className="text-slate-500 text-xs mt-1">You have advanced to the interviewing stage!</p>
+                        </div>
+                      )}
+
+                      {/* Step 4: Final Decision */}
+                      <div className="relative pl-8">
+                        <div className={`absolute -left-[11px] top-0.5 w-5 h-5 rounded-full flex items-center justify-center border-4 border-white 
+                          ${app.status === 'ACCEPTED' ? 'bg-emerald-500 text-white' : 
+                            app.status === 'REJECTED' ? 'bg-rose-500 text-white' : 'bg-slate-200'}`}>
+                          {(app.status === 'ACCEPTED' || app.status === 'REJECTED') ? <CheckCircle size={10} strokeWidth={4}/> : null}
+                        </div>
+                        <h5 className={`font-bold text-sm 
+                          ${app.status === 'ACCEPTED' ? 'text-emerald-600' : 
+                            app.status === 'REJECTED' ? 'text-rose-600' : 'text-slate-400'}`}>
+                          {app.status === 'ACCEPTED' ? 'Offer Extended 🎉' : app.status === 'REJECTED' ? 'Not Selected' : 'Final Decision'}
+                        </h5>
+                        <p className="text-slate-500 text-xs mt-1">
+                          {app.status === 'ACCEPTED' ? 'Congratulations! You have been accepted for this role.' : 
+                           app.status === 'REJECTED' ? 'Unfortunately, the employer has decided to move forward with other candidates.' : 
+                           'Waiting for the final update from the employer.'}
+                        </p>
+                      </div>
+
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -246,6 +349,10 @@ export default function JobSeekerDashboard() {
             </div>
           </form>
         </div>
+      )}
+
+      {activeChatApp && (
+        <ChatModal application={activeChatApp} onClose={() => setActiveChatApp(null)} />
       )}
     </div>
   );

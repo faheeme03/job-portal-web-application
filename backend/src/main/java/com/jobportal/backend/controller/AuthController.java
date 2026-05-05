@@ -57,7 +57,8 @@ public class AuthController {
                 userDetails.getId(),
                 userDetails.getName(),
                 userDetails.getEmail(),
-                roles.get(0)));
+                roles.get(0),
+                userDetails.isPremium()));
     }
 
     @PostMapping("/register")

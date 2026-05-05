@@ -20,13 +20,16 @@ public class UserDetailsImpl implements UserDetails {
     @JsonIgnore
     private String password;
 
+    private boolean isPremium;
+
     private GrantedAuthority authority;
 
-    public UserDetailsImpl(Long id, String name, String email, String password, GrantedAuthority authority) {
+    public UserDetailsImpl(Long id, String name, String email, String password, boolean isPremium, GrantedAuthority authority) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.password = password;
+        this.isPremium = isPremium;
         this.authority = authority;
     }
 
@@ -38,6 +41,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getName(),
                 user.getEmail(),
                 user.getPassword(),
+                user.isPremium(),
                 authority);
     }
 
@@ -49,6 +53,7 @@ public class UserDetailsImpl implements UserDetails {
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getEmail() { return email; }
+    public boolean isPremium() { return isPremium; }
 
     @Override
     public String getPassword() { return password; }

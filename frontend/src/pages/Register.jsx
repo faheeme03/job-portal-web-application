@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AuthService from '../services/auth.service';
 import { useNavigate, Link } from 'react-router-dom';
 import { Briefcase, Building, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'job_seeker' });
@@ -16,9 +17,12 @@ export default function Register() {
     setLoading(true);
     try {
       await AuthService.register(formData.name, formData.email, formData.password, formData.role);
+      toast.success('Registration successful! Please log in.');
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to register');
+      const msg = err.response?.data?.message || 'Failed to register';
+      setError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };

@@ -7,8 +7,9 @@ public class JwtResponse {
     private String name;
     private String email;
     private String role;
+    private boolean isPremium;
 
-    public JwtResponse(String accessToken, Long id, String name, String email, String role) {
+    public JwtResponse(String accessToken, Long id, String name, String email, String role, boolean isPremium) {
         this.token = accessToken;
         this.id = id;
         this.name = name;
@@ -33,4 +34,7 @@ public class JwtResponse {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public boolean isPremium() { return isPremium; }
+    public void setPremium(boolean premium) { isPremium = premium; }
 }
